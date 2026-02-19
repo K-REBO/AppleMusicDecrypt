@@ -164,3 +164,9 @@ config.toml
 .python-version
 .vscode/*
 /extras/telegram_bot/bot_database.db
+
+# QEMU VM image (large file + contains Apple ID credentials)
+*.qcow2
+
+# direnv cache
+.direnv/
