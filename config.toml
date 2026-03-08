@@ -8,7 +8,7 @@ secure = true
 [localInstance]
 # Use qemu to launch wrapper-manager
 # This setting will overwrite instance setting
-enable = true
+enable = false
 # Use WHPX on Windows and KVM on Linux
 # For Windows users, run `Get-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform` to check if WHPX enabled
 # For Linux users, run `sudo kvm-ok` to check if KVM supported

@@ -5,7 +5,7 @@ from typing import Awaitable, Callable, Type
 from async_lru import alru_cache
 from creart import AbstractCreator, CreateTargetInfo, exists_module, it
 from grpc import ssl_channel_credentials
-from grpc.aio import insecure_channel, Channel, secure_channel
+from grpc.aio import insecure_channel, Channel, secure_channel, AioRpcError
 from grpc.experimental import ChannelOptions
 from tenacity import retry_if_exception_type, retry, wait_random_exponential, stop_after_attempt, \
     retry_if_not_exception_message, before_sleep_log
@@ -109,19 +109,25 @@ class WrapperManager:
 
     async def decrypt_init(self, on_success: Callable[[str, str, bytes, int], Awaitable[None]],
                            on_failure: Callable[[str, str, bytes, int], Awaitable[None]]):
-        stream = self._stub.Decrypt(self._decrypt_request_generator())
         safely_create_task(self._decrypt_keepalive())
-        async for reply in stream:
-            reply: DecryptReply
-            if reply.data.adam_id == "KEEPALIVE":
-                continue
-            match reply.header.code:
-                case -1:
-                    safely_create_task(
-                        on_failure(reply.data.adam_id, reply.data.key, reply.data.sample, reply.data.sample_index))
-                case 0:
-                    safely_create_task(
-                        on_success(reply.data.adam_id, reply.data.key, reply.data.sample, reply.data.sample_index))
+        while True:
+            try:
+                stream = self._stub.Decrypt(self._decrypt_request_generator())
+                async for reply in stream:
+                    reply: DecryptReply
+                    if reply.data.adam_id == "KEEPALIVE":
+                        continue
+                    match reply.header.code:
+                        case -1:
+                            safely_create_task(
+                                on_failure(reply.data.adam_id, reply.data.key, reply.data.sample, reply.data.sample_index))
+                        case 0:
+                            safely_create_task(
+                                on_success(reply.data.adam_id, reply.data.key, reply.data.sample, reply.data.sample_index))
+            except AioRpcError as e:
+                it(GlobalLogger).logger.warning(
+                    f"Decrypt stream disconnected ({e.code()}): {e.details()}, reconnecting in 5s...")
+                await asyncio.sleep(5)
 
     async def _decrypt_keepalive(self):
         while True:
