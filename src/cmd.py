@@ -205,7 +205,7 @@ class InteractiveShell:
                     continue
 
     def bottom_toolbar(self):
-        return f"Download Speed: {it(Measurer).download_speed()}, Decrypt Speed: {it(Measurer).decrypt_speed()}, Tasks: {it(Measurer).tasks_count()}"
+        return f"Download Speed: {it(Measurer).download_speed()}, Decrypt Speed: {it(Measurer).decrypt_speed()}, Queue: {it(Measurer).queue_count()}, Tasks: {it(Measurer).tasks_count()}"
 
     def completer(self):
         mycompleter = {
@@ -308,6 +308,30 @@ class InteractiveShell:
             return
         it(GlobalLogger).logger.info("Logout Success!")
         it(WrapperManager).status.cache_invalidate()
+
+    async def run_cli(self, argv: list[str]):
+        try:
+            args = self.parser.parse_args(argv)
+        except (argparse.ArgumentError, SystemExit):
+            it(GlobalLogger).logger.error(f"Invalid arguments: {' '.join(argv)}")
+            os._exit(1)
+
+        cmd = argv[0]
+        match cmd:
+            case "download" | "dl":
+                await self.do_download(args.url, args.codec, args.force, args.language, args.include)
+            case "quality" | "qa":
+                await self.do_quality(args.url, args)
+            case _:
+                it(GlobalLogger).logger.error(f"Unknown command: {cmd}")
+                os._exit(1)
+
+        await asyncio.sleep(0.5)
+        while it(Measurer).tasks_count() > 0:
+            await asyncio.sleep(0.5)
+
+        it(GlobalLogger).logger.info("All tasks completed.")
+        os._exit(0)
 
     async def start(self):
         with patch_stdout():

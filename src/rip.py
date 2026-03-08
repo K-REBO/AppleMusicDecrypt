@@ -36,6 +36,7 @@ class DownloadManager:
 
     async def register_task(self, task: Task):
         self.adam_id_task_mapping[task.adamId] = task
+        it(Measurer).record_task_queue()
         await self.task_lock.acquire()
         it(Measurer).record_task_start()
 

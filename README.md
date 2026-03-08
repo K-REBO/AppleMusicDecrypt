@@ -75,6 +75,32 @@ url = "wm1.wol.moe"
 secure = true
 ```
 
+## CLI Mode
+
+In addition to the interactive shell, you can run one-shot commands directly from the command line (useful for systemd, cron, and scripts):
+
+```shell
+# Download with default codec (alac)
+python main.py dl https://music.apple.com/jp/album/nameless-name-single/1688539265
+
+# Download with specified codec
+python main.py dl https://music.apple.com/jp/album/nameless-name-single/1688539265 --codec aac
+
+# Download multiple URLs
+python main.py dl https://... https://... -c alac -l ja
+
+# Check quality
+python main.py qa https://music.apple.com/jp/album/nameless-name-single/1688539265
+```
+
+systemd example:
+```ini
+[Service]
+Type=oneshot
+ExecStart=/path/to/venv/bin/python main.py dl %i
+WorkingDirectory=/home/user/AppleMusicDecrypt
+```
+
 ## Run
 For Android users: [android-deploy.md](/android-deploy.md)
 

@@ -1,4 +1,5 @@
 import asyncio
+import sys
 
 from creart import add_creator
 
@@ -19,7 +20,13 @@ from src.cmd import InteractiveShell
 
 if __name__ == '__main__':
     cmd = InteractiveShell(loop)
-    try:
-        loop.run_until_complete(cmd.start())
-    except KeyboardInterrupt:
-        loop.stop()
+    if len(sys.argv) > 1:
+        try:
+            loop.run_until_complete(cmd.run_cli(sys.argv[1:]))
+        except KeyboardInterrupt:
+            loop.stop()
+    else:
+        try:
+            loop.run_until_complete(cmd.start())
+        except KeyboardInterrupt:
+            loop.stop()
