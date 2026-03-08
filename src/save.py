@@ -35,6 +35,16 @@ def save_m3u(playlist_info: PlaylistInfo):
 
     m3u_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+    attrs = playlist_info.data[0].attributes
+    description = attrs.description.standard if attrs.description else ""
+    info_lines = [
+        f"title={attrs.name or ''}",
+        f"creator={attrs.curatorName or ''}",
+        f"description={description}",
+    ]
+    info_path = playlist_dir / "info.txt"
+    info_path.write_text("\n".join(info_lines) + "\n", encoding="utf-8")
+
 
 def save(song: bytes, codec: str, metadata: SongMetadata, playlist: PlaylistInfo = None):
     song_name, dir_path = get_song_name_and_dir_path(codec.upper(), metadata, playlist)
