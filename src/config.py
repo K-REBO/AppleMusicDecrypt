@@ -44,7 +44,7 @@ class Download(BaseModel):
     playlistSongNameFormat: str = "{playlistSongIndex:02d}. {artist} - {title}"
     saveLyrics: bool = True
     lyricsFormat: str = "lrc"
-    lyricsExtra: list[str] = ["translation", "pronunciation"]
+    lyricsExtra: list[str] = ["translation"]
     saveCover: bool = True
     coverFormat: str = "jpg"
     coverSize: str = "5000x5000"

@@ -388,8 +388,13 @@ class Ripper:
         # We need to send the command to wrapper manager
         await it(WrapperManager).decrypt(adam_id, key, sample, sample_index)
 
-        # Wait for the future to be resolved by the callback
-        return await future
+        # Wait for the future to be resolved by the callback.
+        # Timeout prevents indefinite hang when the decrypt stream disconnects mid-flight.
+        try:
+            return await asyncio.wait_for(asyncio.shield(future), timeout=it(Config).download.maxWaitTime)
+        except asyncio.TimeoutError:
+            future.cancel()
+            raise Exception(f"Decrypt timeout for sample {sample_index}, stream may have disconnected")
 
     async def on_decrypt_success(self, adam_id: str, key: str, sample: bytes, sample_index: int):
         it(Measurer).record_decrypt(len(sample))

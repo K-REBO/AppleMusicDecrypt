@@ -20,7 +20,7 @@ from src.qemu import QemuInstance
 from src.quality import print_song_quality, print_album_quality, print_playlist_quality, key_to_Headers
 from src.rip import Ripper
 from src.url import AppleMusicURL, URLType
-from src.utils import check_dep, run_sync, safely_create_task, config_outdated
+from src.utils import check_dep, run_sync, safely_create_task, config_outdated, background_tasks
 
 
 class InteractiveShell:
@@ -327,7 +327,7 @@ class InteractiveShell:
                 os._exit(1)
 
         await asyncio.sleep(0.5)
-        while it(Measurer).tasks_count() > 0:
+        while background_tasks:
             await asyncio.sleep(0.5)
 
         it(GlobalLogger).logger.info("All tasks completed.")
