@@ -9,6 +9,33 @@ from src.models import PlaylistInfo
 from src.utils import ttml_convent, get_song_name_and_dir_path, get_suffix
 
 
+def save_m3u(playlist_info: PlaylistInfo):
+    from src.utils import get_valid_filename, playlist_metadata_to_params, get_path_safe_dict
+
+    config = it(Config)
+    safe_pl_meta = get_path_safe_dict(playlist_metadata_to_params(playlist_info))
+
+    playlist_dir = Path(config.download.playlistDirPathFormat.format(**safe_pl_meta))
+    if not playlist_dir.exists():
+        os.makedirs(playlist_dir.absolute())
+
+    playlist_name = get_valid_filename(playlist_info.data[0].attributes.name)
+    m3u_path = playlist_dir / Path(f"{playlist_name}.m3u")
+
+    sorted_song_ids = sorted(
+        playlist_info.saved_song_paths.keys(),
+        key=lambda sid: playlist_info.songIdIndexMapping.get(sid, 0)
+    )
+
+    lines = ["#EXTM3U"]
+    for song_id in sorted_song_ids:
+        song_abs_path = Path(playlist_info.saved_song_paths[song_id])
+        rel_path = os.path.relpath(song_abs_path, playlist_dir.absolute())
+        lines.append(rel_path)
+
+    m3u_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def save(song: bytes, codec: str, metadata: SongMetadata, playlist: PlaylistInfo = None):
     song_name, dir_path = get_song_name_and_dir_path(codec.upper(), metadata, playlist)
     if not dir_path.exists() or not dir_path.is_dir():

@@ -7,7 +7,7 @@ import httpx
 import regex
 from creart import AbstractCreator, CreateTargetInfo, exists_module, it
 from httpx import Request, Response, AsyncHTTPTransport
-from hishel.httpx import AsyncCacheClient
+from hishel import AsyncCacheClient
 from tenacity import retry, retry_if_exception_type, wait_random_exponential, stop_after_attempt, before_sleep_log
 
 from src.config import Config

@@ -19,12 +19,14 @@ from src.metadata import SongMetadata
 from src.models import PlaylistInfo
 from src.mp4 import extract_media, extract_song, encapsulate, write_metadata, fix_encapsulate, fix_esds_box, \
     check_song_integrity
-from src.save import save
+from pathlib import Path
+from src.save import save, save_m3u
 from src.task import Task, Status
 from src.types import Codec, ParentDoneHandler
 from src.url import Song, Album, URLType, Playlist
 from src.utils import get_codec_from_codec_id, check_song_existence, check_song_exists, if_raw_atmos, \
-    check_album_existence, playlist_write_song_index, run_sync, safely_create_task, language_exist, query_language
+    check_album_existence, playlist_write_song_index, run_sync, safely_create_task, language_exist, query_language, \
+    get_song_name_and_dir_path, get_suffix
 
 
 class DownloadManager:
@@ -103,10 +105,14 @@ class Ripper:
             if playlist:
                 task.metadata.set_playlist_index(playlist.songIdIndexMapping.get(url.id))
 
-            # Check Local Existence
-            if not flags.force_save and check_song_exists(task.metadata, codec, playlist):
+            # Check Local Existence (アルバムパスで確認)
+            if not flags.force_save and check_song_exists(task.metadata, codec):
                 task.logger.already_exist()
                 task.update_status(Status.DONE)
+                if playlist:
+                    song_name, dir_path = get_song_name_and_dir_path(codec, task.metadata)
+                    existing_path = Path(dir_path) / Path(song_name + get_suffix(codec, it(Config).download.atmosConventToM4a))
+                    playlist.saved_song_paths[url.id] = str(existing_path.absolute())
                 return
 
             # Get M3U8
@@ -134,10 +140,14 @@ class Ripper:
             task.logger.selected_codec(task.m3u8Info.codec_id)
             if all([bool(task.m3u8Info.bit_depth), bool(task.m3u8Info.sample_rate)]):
                 task.metadata.set_bit_depth_and_sample_rate(task.m3u8Info.bit_depth, task.m3u8Info.sample_rate)
-                # Check existence again with precise metadata
-                if not flags.force_save and check_song_exists(task.metadata, codec, playlist):
+                # Check existence again with precise metadata (アルバムパスで確認)
+                if not flags.force_save and check_song_exists(task.metadata, codec):
                     task.logger.already_exist()
                     task.update_status(Status.DONE)
+                    if playlist:
+                        song_name, dir_path = get_song_name_and_dir_path(codec, task.metadata)
+                        existing_path = Path(dir_path) / Path(song_name + get_suffix(codec, it(Config).download.atmosConventToM4a))
+                        playlist.saved_song_paths[url.id] = str(existing_path.absolute())
                     return
 
             # Wait in queue
@@ -200,14 +210,16 @@ class Ripper:
                             task.logger.failed_integrity(False)
                             task.error = SongNotPassIntegrityCheckException("Integrity Check Warning")
         
-                    local_filename = await run_sync(save, song_bytes, local_codec, task.metadata, task.playlist)
+                    local_filename = await run_sync(save, song_bytes, local_codec, task.metadata)
+                    if task.playlist:
+                        task.playlist.saved_song_paths[url.id] = str(local_filename)
                     task.logger.saved()
                     task.update_status(Status.DONE)
-        
+
                     if it(Config).download.afterDownloaded:
                         command = it(Config).download.afterDownloaded.format(filename=local_filename)
                         subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
+
                 if timeout_sec > 0:
                     await asyncio.wait_for(_phase2(), timeout=timeout_sec)
                 else:
@@ -275,10 +287,12 @@ class Ripper:
                     if not await run_sync(check_song_integrity, song_bytes):
                         task.logger.failed_integrity(True)
         
-                    local_filename = await run_sync(save, song_bytes, Codec.AAC_LEGACY, task.metadata, task.playlist)
+                    local_filename = await run_sync(save, song_bytes, Codec.AAC_LEGACY, task.metadata)
+                    if task.playlist:
+                        task.playlist.saved_song_paths[url.id] = str(local_filename)
                     task.logger.saved()
                     task.update_status(Status.DONE)
-        
+
                     if it(Config).download.afterDownloaded:
                         command = it(Config).download.afterDownloaded.format(filename=local_filename)
                         subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -350,6 +364,7 @@ class Ripper:
 
         async def on_children_done():
             logger.done()
+            await run_sync(save_m3u, playlist_info)
 
         done_handler = ParentDoneHandler(len(playlist_info.data[0].relationships.tracks.data), on_children_done)
 

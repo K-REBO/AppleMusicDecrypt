@@ -133,3 +133,4 @@ class Datum(BaseModel):
 class PlaylistInfo(BaseModel):
     data: List[Datum]
     songIdIndexMapping: dict[str, int] = {}
+    saved_song_paths: dict[str, str] = {}  # song_id -> 保存済みファイルの絶対パス
