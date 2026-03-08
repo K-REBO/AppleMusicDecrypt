@@ -9,7 +9,7 @@ from src.models import PlaylistInfo
 from src.utils import ttml_convent, get_song_name_and_dir_path, get_suffix
 
 
-def save_m3u(playlist_info: PlaylistInfo):
+def save_m3u(playlist_info: PlaylistInfo, playlist_cover: bytes = None):
     from src.utils import get_valid_filename, playlist_metadata_to_params, get_path_safe_dict
 
     config = it(Config)
@@ -44,6 +44,10 @@ def save_m3u(playlist_info: PlaylistInfo):
     ]
     info_path = playlist_dir / "info.txt"
     info_path.write_text("\n".join(info_lines) + "\n", encoding="utf-8")
+
+    if playlist_cover:
+        cover_path = playlist_dir / f"cover.{it(Config).download.coverFormat}"
+        cover_path.write_bytes(playlist_cover)
 
 
 def save(song: bytes, codec: str, metadata: SongMetadata, playlist: PlaylistInfo = None):

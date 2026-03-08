@@ -101,7 +101,10 @@ class Ripper:
                                                              it(Config).download.coverSize)
 
             if raw_metadata.attributes.hasTimeSyncedLyrics:
-                task.metadata.lyrics = await it(WrapperManager).lyrics(task.adamId, flags.language, url.storefront)
+                try:
+                    task.metadata.lyrics = await it(WrapperManager).lyrics(task.adamId, flags.language, url.storefront)
+                except Exception as e:
+                    task.logger.logger.warning(f"Failed to fetch lyrics, skipping: {e}")
 
             if playlist:
                 task.metadata.set_playlist_index(playlist.songIdIndexMapping.get(url.id))
@@ -363,9 +366,18 @@ class Ripper:
 
         logger.create()
 
+        playlist_cover = None
+        artwork = playlist_info.data[0].attributes.artwork
+        if it(Config).download.saveCover and artwork and artwork.url:
+            try:
+                playlist_cover = await it(WebAPI).get_cover(artwork.url, it(Config).download.coverFormat,
+                                                            it(Config).download.coverSize)
+            except Exception as e:
+                logger.logger.warning(f"Failed to fetch playlist cover: {e}")
+
         async def on_children_done():
             logger.done()
-            await run_sync(save_m3u, playlist_info)
+            await run_sync(save_m3u, playlist_info, playlist_cover)
 
         done_handler = ParentDoneHandler(len(playlist_info.data[0].relationships.tracks.data), on_children_done)
 

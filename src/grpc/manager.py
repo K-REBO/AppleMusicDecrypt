@@ -154,8 +154,8 @@ class WrapperManager:
             raise WrapperManagerException(resp.header.msg)
         return
 
-    @retry(retry=((retry_if_exception_type(WrapperManagerException)) & (
-            retry_if_not_exception_message('no available instance'))),
+    @retry(retry=((retry_if_exception_type(WrapperManagerException) & retry_if_not_exception_message('no available instance')) |
+                  retry_if_exception_type(AioRpcError)),
            wait=wait_random_exponential(multiplier=1, max=it(Config).download.maxWaitTime),
            stop=stop_after_attempt(it(Config).download.retryTime), before_sleep=before_sleep_log(it(GlobalLogger).logger, "WARNING"))
     async def lyrics(self, adam_id: str, language: str, region: str) -> str:
